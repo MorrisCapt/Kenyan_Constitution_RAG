@@ -18,8 +18,21 @@ import groq
 
 import os
 
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from jinja2 import Environment, FileSystemLoader
+
 # API Key
 GROQ_API_KEY = "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"
+
+# Initialize FastAPI
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Hello, FastAPI is working!"}
 
 # Load the pdf file.
 loader = PyPDFLoader("constitution_of_kenya.pdf")
@@ -95,21 +108,25 @@ response = get_response(query)
 print(response)
 
 # Integrating the UI
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+# Set up Jinja2 environment
+env = Environment(loader=FileSystemLoader("templates"))
 
-app = FastAPI()
+# Load your template
+template = env.get_template("index.html")
 
-# Serve static files (e.g., CSS, JS) if needed
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Optional: data you want to inject into the template
+context = {
+    "title": "RAG UI",
+    "some_data": "This is your dynamic content"
+}
 
-# Setup Jinja2 templates directory
-templates = Jinja2Templates(directory="templates")
+# Render template
+rendered_html = template.render(context)
 
-@app.get("/", response_class=HTMLResponse)
-async def serve_rag_ui(request: Request):
-    # You can pass variables to your HTML template via context dictionary
-    return templates.TemplateResponse("index.html", {"request": request})
+# Print to stdout
+print(rendered_html)
+
+#Save to a new HTML file
+with open("output.html", "w", encoding="utf-8") as f:
+    f.write(rendered_html)
 
