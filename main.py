@@ -25,7 +25,7 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader
 
 # API Key
-GROQ_API_KEY = "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"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Initialize FastAPI
 app = FastAPI()
@@ -107,26 +107,32 @@ query = input("You:")
 response = get_response(query)
 print(response)
 
-# Integrating the UI
-# Set up Jinja2 environment
-env = Environment(loader=FileSystemLoader("templates"))
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-# Load your template
-template = env.get_template("index.html")
+# CORS middleware (optional but helpful for testing in browser)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Optional: data you want to inject into the template
-context = {
-    "title": "RAG UI",
-    "some_data": "This is your dynamic content"
-}
+# Set up Jinja2Templates to serve the HTML
+templates = Jinja2Templates(directory="templates")
 
-# Render template
-rendered_html = template.render(context)
+@app.get("/", response_class=HTMLResponse)
+async def serve_ui(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-# Print to stdout
-print(rendered_html)
+# Define request body model
+class Question(BaseModel):
+    question: str
 
-#Save to a new HTML file
-with open("output.html", "w", encoding="utf-8") as f:
-    f.write(rendered_html)
-
+@app.post("/ask")
+async def ask_question(q: Question):
+    try:
+        response = get_response(q.question)
+        return {"answer": response.content}  # .content from HumanMessage output
+    except Exception as e:
+        return {"answer": f"Error: {str(e)}"}
